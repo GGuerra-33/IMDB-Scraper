@@ -4,7 +4,22 @@ import pandas as pd
 
 def scrape_imdb_top_movies():
     url = 'https://www.imdb.com/chart/top/'
-    response = requests.get(url)
+    
+    # Define headers
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    # Check if the request was successful
+    if response.status_code != 200:
+        print(f"Failed to retrieve the page. Status code: {response.status_code}")
+        return pd.DataFrame()
+
+    # Print the first 500 characters of the HTML response for inspection
+    print(response.text[:500])
+    
     soup = BeautifulSoup(response.text, 'html.parser')
     
     # Select rows from the table
@@ -36,13 +51,13 @@ def scrape_imdb_top_movies():
         rating = rating_column.strong.text
         link = 'https://www.imdb.com' + title_column.a['href']
         
-        movie_page = requests.get(link)
+        movie_page = requests.get(link, headers=headers)
         movie_soup = BeautifulSoup(movie_page.text, 'html.parser')
         
-        genres = [genre.text for genre in movie_soup.find_all('span', class_='genre')]
-        director = movie_soup.find('span', class_='credit_summary_item').a.text
+        genres = [genre.text.strip() for genre in movie_soup.find_all('span', class_='genre')]
+        director = movie_soup.find('span', class_='credit_summary_item').a.text.strip()
         cast_list = movie_soup.select('table.cast_list tr')[1:6]
-        cast = [actor.find('a').text.strip() for actor in cast_list]
+        cast = [actor.find('a').text.strip() for actor in cast_list if actor.find('a')]
         
         movies.append({
             'Title': title,
@@ -62,5 +77,6 @@ df = scrape_imdb_top_movies()
 if isinstance(df, pd.DataFrame):
     # Save the DataFrame to a CSV file
     df.to_csv('imdb_top_movies.csv', index=False)
+    print("Data successfully saved to imdb_top_movies.csv")
 else:
     print("df is not a DataFrame")
