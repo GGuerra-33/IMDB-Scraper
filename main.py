@@ -1,38 +1,46 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 import requests
-import pandas as pd
 from bs4 import BeautifulSoup
+import pandas as pd
 
 def scrape_imdb_top_movies():
-    # Set up Selenium
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    service = Service('path_to_chromedriver')
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    
     url = 'https://www.imdb.com/chart/top/'
-    driver.get(url)
     
-    # Get page source and close driver
-    html = driver.page_source
-    driver.quit()
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     
-    soup = BeautifulSoup(html, 'html.parser')
+    response = requests.get(url, headers=headers)
     
+    # Check if the request was successful
+    if response.status_code != 200:
+        print(f"Failed to retrieve the page. Status code: {response.status_code}")
+        return pd.DataFrame()
+
+    # Print the first 2000 characters of the HTML response for inspection
+    print(response.text[:2000])
+    
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Select rows from the table
     rows = soup.select('table.chart.full-width tr')
+    
+    # Debugging: Print the number of rows and a sample row
+    print(f"Number of rows found: {len(rows)}")
+    if len(rows) > 1:
+        print(f"First row content: {rows[0]}")
     
     movies = []
 
+    # Ensure there are enough rows before proceeding
     if len(rows) < 2:
         print("No data rows found.")
-        return pd.DataFrame(movies)
+        return pd.DataFrame(movies)  # Return an empty DataFrame
     
-    for row in rows[1:]:
+    for row in rows[1:]:  # Skip the header row
         title_column = row.find('td', class_='titleColumn')
         rating_column = row.find('td', class_='imdbRating')
 
+        # Ensure the columns exist before proceeding
         if not title_column or not rating_column:
             print("Missing title or rating column in a row.")
             continue
@@ -42,7 +50,7 @@ def scrape_imdb_top_movies():
         rating = rating_column.strong.text
         link = 'https://www.imdb.com' + title_column.a['href']
         
-        movie_page = requests.get(link)
+        movie_page = requests.get(link, headers=headers)
         movie_soup = BeautifulSoup(movie_page.text, 'html.parser')
         
         genres = [genre.text.strip() for genre in movie_soup.find_all('span', class_='genre')]
@@ -71,4 +79,3 @@ if isinstance(df, pd.DataFrame):
     print("Data successfully saved to imdb_top_movies.csv")
 else:
     print("df is not a DataFrame")
-
