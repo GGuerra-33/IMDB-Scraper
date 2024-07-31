@@ -31,6 +31,6 @@ all_elements = soup.find_all()
 
 elements_name = {element.name for element in all_elements}
 
-
 for name in elements_name:
     print(name)
+    
