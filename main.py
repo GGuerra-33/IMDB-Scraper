@@ -18,3 +18,5 @@ def scrape_movie_data():
     
     soup = BeautifulSoup(source, "html_parser")
 
+    titles = soup.select()
+
